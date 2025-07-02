@@ -45,6 +45,9 @@ def main():
     parser.add_argument(
         "-y", "--yaml", action="append", help="Test given .yaml file for ICS source"
     )
+    parser.add_argument(
+        "-c", "--testcase", action="append", dest="testcases", help="Run tests containing this string"
+    )
     args = parser.parse_args()
 
     # read secrets.yaml
@@ -94,7 +97,16 @@ def main():
         assert "TEST_CASES" in names
 
         # run through all test-cases
-        for name, tc in module.TEST_CASES.items():
+        testcases = module.TEST_CASES
+        if args.testcases:
+            testcases = {
+                name: tc for name, tc in testcases.items()
+                if any(substring in name for substring in args.testcases)
+            }
+        for name, tc in testcases.items():
+            if args.testcases:
+                if not any([True for x in args.testcases if x in name]):
+                    return
             # replace secrets in arguments
             replace_secret(secrets, tc)
 
