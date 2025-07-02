@@ -3,12 +3,15 @@
 import argparse
 import datetime
 import importlib
+import logging
 import re
 import site
 import traceback
 from pathlib import Path
 
 import yaml
+
+logging.basicConfig(level=logging.DEBUG)
 
 SECRET_FILENAME = Path(__file__).resolve().parent / "secrets.yaml"
 SECRET_REGEX = re.compile(r"!secret\s(\w+)")
