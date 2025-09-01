@@ -1,6 +1,7 @@
 import json
 from datetime import datetime
 
+import logging
 import requests
 import urllib
 from waste_collection_schedule import Collection  # type: ignore[attr-defined]
@@ -242,7 +243,22 @@ TEST_CASES = {
         "state": "British Columbia",
         "region_prefix": "ca",
     },
+    "Lakeshore-manual": {
+        "city": "Lakeshore",
+        "state": "Ontario",
+        "project_id": "583",
+        "district_id": "LAK",
+        "zone_id": "zone-z9942",
+        "region_prefix": "ca",
+    },
+    "Lakeshore-discover": {
+        "city": "Lakeshore",
+        "state": "Ontario",
+        "street": "657 Centre Street",
+    }
 }
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class Source:
@@ -285,6 +301,7 @@ class Source:
         res = requests.get(city_finder)
         city_data = res.json()
 
+        _LOGGER.debug("_lookup_city: %s", city_data)
         if len(city_data) == 1:
             self.project_id = city_data[0]["project_id"]
             self.district_id = city_data[0]["district_id"]
@@ -295,6 +312,13 @@ class Source:
                 raise Exception(
                     "Found your city, but it is not yet supported fully by recycle coach."
                 )
+            _LOGGER.debug(
+                "_lookup_city: found p=%s, d=%s, s=%s, pfx=%s",
+                self.project_id,
+                self.district_id, 
+                self.stage,
+                self.region_prefix,
+            )
             return
 
         elif len(city_data) > 1:
@@ -304,6 +328,13 @@ class Source:
                     self.district_id = city["district_id"]
                     self.stage = float(city["stage"])
                     self.region_prefix = city.get("apigw_prefix", self.region_prefix)
+                    _LOGGER.debug(
+                        "_lookup_city: found p=%s, d=%s, s=%s, pfx=%s",
+                        self.project_id,
+                        self.district_id, 
+                        self.stage,
+                        self.region_prefix,
+                    )
                     return
 
         raise Exception(
@@ -323,6 +354,7 @@ class Source:
         res = requests.get(pos_finder)
         lat = None
         pos_data = res.json()
+        _LOGGER.debug("_lookup_zones_with_geo: %s", pos_data)
         streets = []
         for pos_res in pos_data:
             streetpart = self._format_key(pos_res["address"]).split(",")[0]
@@ -374,7 +406,9 @@ class Source:
         )
         res = requests.get(zone_finder)
         zone_data = res.json()
+        _LOGGER.debug("_lookup_zones: %s", zone_data)
         if "results" not in zone_data:
+            _LOGGER.debug("_lookup_zones: delegating to _lookup_zones_with_geo")
             return self._lookup_zones_with_geo()
         streets = []
         for zone_res in zone_data["results"]:
